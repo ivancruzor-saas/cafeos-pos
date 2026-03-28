@@ -481,8 +481,9 @@ export default function CafeOSPOS() {
           setIngredients(dbI);
           setRecipes(dbR);
           setDb(true);
-          const today=new Date().toISOString().slice(0,10);
-          try{const ts=await api.get("sales",`select=id,total&store_id=eq.${STORE}&status=eq.completed&created_at=gte.${today}T00:00:00`);setSales({count:ts.length,total:ts.reduce((s,x)=>s+ +x.total,0)});}catch(e){}
+          const tjNow=new Date(new Date().toLocaleString('en-US',{timeZone:'America/Tijuana'}));
+          const todayStart=new Date(tjNow.getFullYear(),tjNow.getMonth(),tjNow.getDate()).toISOString();
+          try{const ts=await api.get("sales",`select=id,total&store_id=eq.${STORE}&status=eq.completed&created_at=gte.${todayStart}`);setSales({count:ts.length,total:ts.reduce((s,x)=>s+ +x.total,0)});}catch(e){}
         }
       } catch(e){ console.log("Offline mode:",e.message); }
     })();
@@ -559,7 +560,7 @@ export default function CafeOSPOS() {
     if(type==="cash"){cashRcvd=parseFloat(cashIn)||cTotal;change=cashRcvd-cTotal;}
     else if(type==="usd"){usdRcvd=parseFloat(usdIn)||0;changeMxn=(usdRcvd*xrate)-cTotal;}
     const r = {
-      number:`${ts.toISOString().slice(0,10).replace(/-/g,"")}-${String(sales.count+1).padStart(4,"0")}`,
+      number:`${new Date(ts.toLocaleString('en-US',{timeZone:'America/Tijuana'})).toLocaleDateString('en-CA').replace(/-/g,"")}-${String(sales.count+1).padStart(4,"0")}`,
       items:cart.map(i=>({...i,
         milkLabel:i.milk&&i.milk!=="regular"?MILKS.find(m=>m.id===i.milk):null,
         breadLabel:i.bread?BREADS.find(b=>b.id===i.bread):null,
