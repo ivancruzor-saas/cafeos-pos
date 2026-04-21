@@ -216,160 +216,171 @@ function ShiftCloseModal({ shift, xrate, onClose, onConfirm }) {
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [shiftData, setShiftData] = useState(null);
+  const [showDetail, setShowDetail] = useState(false);
+  const [closeResult, setCloseResult] = useState(null);
 
   useEffect(() => {
     (async () => {
       try {
         const sales = await api.get("sales",`select=total,payment_type,usd_received,change_given_mxn,change_given_usd&shift_id=eq.${shift.id}`);
         const expenses = await api.get("shift_expenses",`select=amount&shift_id=eq.${shift.id}`);
-        
-        // Ventas por tipo de pago
         const cashMxnSales = sales.filter(s=>s.payment_type==="cash").reduce((s,x)=>s+ +x.total,0);
         const cashMxnChange = sales.filter(s=>s.payment_type==="cash").reduce((s,x)=>s+ +(x.change_given_mxn||0),0);
         const usdSales = sales.filter(s=>s.payment_type==="usd");
-        const usdReceived = usdSales.reduce((s,x)=>s+ +(x.usd_received||0),0); // dólares físicos entrantes
-        const usdChangeGivenMxn = usdSales.reduce((s,x)=>s+ +(x.change_given_mxn||0),0); // pesos que salieron como cambio
-        const usdChangeGivenUsd = usdSales.reduce((s,x)=>s+ +(x.change_given_usd||0),0); // dólares que salieron como cambio
+        const usdSalesTotal = usdSales.reduce((s,x)=>s+ +x.total,0);
+        const usdReceived = usdSales.reduce((s,x)=>s+ +(x.usd_received||0),0);
+        const usdChangeGivenMxn = usdSales.reduce((s,x)=>s+ +(x.change_given_mxn||0),0);
+        const usdChangeGivenUsd = usdSales.reduce((s,x)=>s+ +(x.change_given_usd||0),0);
         const cardTotal = sales.filter(s=>s.payment_type==="card").reduce((s,x)=>s+ +x.total,0);
         const expTotal = expenses.reduce((s,x)=>s+ +x.amount,0);
-        
         setShiftData({
           salesCount: sales.length,
-          // MXN físico: entró por ventas cash, salió por cambio cash + cambio USD + gastos
-          cashMxnReceived: cashMxnSales,     // total de ventas MXN (incluye monto recibido)
-          cashMxnChange: cashMxnChange,       // cambio dado en ventas MXN
-          usdReceived: usdReceived,           // dólares físicos que entraron
-          usdChangeGivenMxn: usdChangeGivenMxn, // pesos dados como cambio por ventas USD
-          usdChangeGivenUsd: usdChangeGivenUsd, // dólares dados como cambio por ventas USD
-          cardTotal,
-          expTotal,
+          cashMxnReceived: cashMxnSales, cashMxnChange,
+          usdSalesTotal, usdReceived, usdChangeGivenMxn, usdChangeGivenUsd,
+          cardTotal, expTotal,
           salesTotal: sales.reduce((s,x)=>s+ +x.total,0),
         });
       } catch(e) { console.error(e); }
     })();
   }, [shift.id]);
 
+  if (!shiftData) return <Overlay onClose={onClose}><div style={{background:"#1a1a1a",borderRadius:12,padding:24,width:380,border:"1px solid #333",color:"#fafafa",textAlign:"center"}}>Calculando turno...</div></Overlay>;
+
+  const expectedMxn = Number(shift.opening_fund_mxn) + shiftData.cashMxnReceived - shiftData.cashMxnChange - shiftData.usdChangeGivenMxn - shiftData.expTotal;
+  const expectedUsd = Number(shift.opening_fund_usd) + shiftData.usdReceived - shiftData.usdChangeGivenUsd;
+  const expectedCard = shiftData.cardTotal;
+
   const handleConfirm = async () => {
-    if (!shiftData) return;
     setLoading(true);
     try {
       const countedMxn = parseFloat(cMxn) || 0;
       const countedUsd = parseFloat(cUsd) || 0;
       const countedCard = parseFloat(cCard) || 0;
-      
-      // Esperado MXN físico = fondo + ventas cash MXN - cambio cash MXN - cambio USD en pesos - gastos
-      const expectedMxn = Number(shift.opening_fund_mxn) 
-        + shiftData.cashMxnReceived 
-        - shiftData.cashMxnChange 
-        - shiftData.usdChangeGivenMxn 
-        - shiftData.expTotal;
-      // Esperado USD físico = fondo USD + dólares recibidos de clientes − dólares dados como cambio
-      const expectedUsd = Number(shift.opening_fund_usd) + shiftData.usdReceived - shiftData.usdChangeGivenUsd;
-      // Tarjeta = conciliación directa
-      const expectedCard = shiftData.cardTotal;
-      
       const diffMxn = countedMxn - expectedMxn;
       const diffUsd = countedUsd - expectedUsd;
       const diffCard = countedCard - expectedCard;
       const diffTotalMxn = diffMxn + (diffUsd * xrate) + diffCard;
-
       await api.patch("shifts", `id=eq.${shift.id}`, {
-        closed_at: new Date().toISOString(),
-        status: "closed",
-        system_sales_cash_mxn: shiftData.cashMxnReceived,
-        system_sales_cash_usd: shiftData.usdReceived,
-        system_sales_card: shiftData.cardTotal,
-        system_sales_total: shiftData.salesTotal,
-        system_sales_count: shiftData.salesCount,
-        system_expenses: shiftData.expTotal,
-        counted_cash_mxn: countedMxn,
-        counted_cash_usd: countedUsd,
-        counted_card: countedCard,
-        diff_cash_mxn: diffMxn,
-        diff_cash_usd: diffUsd,
-        diff_card: diffCard,
-        diff_total_mxn: diffTotalMxn,
-        close_notes: notes || null,
+        closed_at: new Date().toISOString(), status: "closed",
+        system_sales_cash_mxn: shiftData.cashMxnReceived, system_sales_cash_usd: shiftData.usdReceived,
+        system_sales_card: shiftData.cardTotal, system_sales_total: shiftData.salesTotal,
+        system_sales_count: shiftData.salesCount, system_expenses: shiftData.expTotal,
+        counted_cash_mxn: countedMxn, counted_cash_usd: countedUsd, counted_card: countedCard,
+        diff_cash_mxn: diffMxn, diff_cash_usd: diffUsd, diff_card: diffCard,
+        diff_total_mxn: diffTotalMxn, close_notes: notes || null,
       });
-      onConfirm({ countedMxn, countedUsd, countedCard, diffMxn, diffUsd, diffCard, diffTotalMxn, shiftData });
+      setCloseResult({ countedMxn, countedUsd, countedCard, diffMxn, diffUsd, diffCard, diffTotalMxn });
     } catch(e) { alert("Error al cerrar turno: " + e.message); }
     setLoading(false);
   };
 
-  if (!shiftData) return <Overlay onClose={onClose}><div style={{background:"#1a1a1a",borderRadius:12,padding:24,width:380,border:"1px solid #333",color:"#fafafa",textAlign:"center"}}>Calculando turno...</div></Overlay>;
-
-  // Cálculos para display
-  const expectedMxn = Number(shift.opening_fund_mxn) + shiftData.cashMxnReceived - shiftData.cashMxnChange - shiftData.usdChangeGivenMxn - shiftData.expTotal;
-  const expectedUsd = Number(shift.opening_fund_usd) + shiftData.usdReceived - shiftData.usdChangeGivenUsd;
-  const expectedCard = shiftData.cardTotal;
   const S={input:{width:"100%",padding:"10px",borderRadius:8,border:"1px solid #333",background:"#1e1e1e",color:"#fafafa",fontSize:16,fontFamily:mono,outline:"none",textAlign:"center",boxSizing:"border-box"}};
+  const Row=({l,v,c,b})=>(<div style={{display:"flex",justifyContent:"space-between",marginBottom:3,fontWeight:b?700:400}}><span style={{color:c?"inherit":"#888"}}>{l}</span><span style={{fontFamily:mono,color:c||"#fafafa"}}>{v}</span></div>);
 
-  const DiffBadge = ({val, label}) => val !== 0 ? (
-    <div style={{padding:6,borderRadius:6,background:val>0?"#22c55e0c":"#ef44440c",border:`1px solid ${val>0?"#22c55e28":"#ef444428"}`,marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:11}}>
-      <span style={{color:val>0?"#22c55e":"#ef4444"}}>{label}</span>
-      <span style={{fontFamily:mono,fontWeight:700,color:val>0?"#22c55e":"#ef4444"}}>{val>0?"+":""}${val.toFixed(2)}</span>
-    </div>
-  ) : null;
+  // POST-CLOSE SUMMARY
+  if (closeResult) {
+    const diffTotal = closeResult.diffTotalMxn;
+    const diffColor = Math.abs(diffTotal) < 0.01 ? "#22c55e" : diffTotal > 0 ? "#f59e0b" : "#ef4444";
+    const diffLabel = Math.abs(diffTotal) < 0.01 ? "CUADRA" : diffTotal > 0 ? "SOBRANTE" : "FALTANTE";
+    return (
+      <Overlay onClose={()=>{}}>
+        <div style={{background:"#1a1a1a",borderRadius:12,padding:24,width:420,border:"1px solid #333",color:"#fafafa",maxHeight:"90vh",overflow:"auto"}}>
+          <div style={{textAlign:"center",marginBottom:16}}>
+            <div style={{fontSize:22,fontWeight:800,marginBottom:2}}>Turno Cerrado</div>
+            <div style={{fontSize:10,color:"#888"}}>{new Date(shift.opened_at).toLocaleDateString("es-MX",{timeZone:TZ,weekday:"short",day:"numeric",month:"short"})} \u00b7 {new Date(shift.opened_at).toLocaleTimeString("es-MX",{timeZone:TZ,hour:"2-digit",minute:"2-digit"})} \u2014 {new Date().toLocaleTimeString("es-MX",{timeZone:TZ,hour:"2-digit",minute:"2-digit"})}</div>
+          </div>
+          <div style={{padding:16,borderRadius:10,background:"#111",border:"1px solid #333",marginBottom:16}}>
+            <Row l="Total ventas:" v={`$${shiftData.salesTotal.toFixed(2)}`} b/>
+            <div style={{borderTop:"1px solid #262626",margin:"8px 0"}}/>
+            <Row l="Tarjeta:" v={`$${shiftData.cardTotal.toFixed(2)}`}/>
+            <Row l={`D\u00f3lares: US$${shiftData.usdReceived.toFixed(2)}`} v={`\u2248$${(shiftData.usdReceived*xrate).toFixed(2)} MXN`}/>
+            <Row l="Efectivo MXN:" v={`$${shiftData.cashMxnReceived.toFixed(2)}`}/>
+            {shiftData.expTotal>0&&<Row l="Gastos:" v={`-$${shiftData.expTotal.toFixed(2)}`} c="#ef4444"/>}
+            <div style={{borderTop:"1px solid #262626",margin:"8px 0"}}/>
+            <Row l="Esperado MXN en caja:" v={`$${expectedMxn.toFixed(2)}`} c="#f59e0b" b/>
+            <Row l="Esperado USD en caja:" v={`US$${expectedUsd.toFixed(2)}`} c="#22c55e" b/>
+          </div>
+          <div style={{padding:16,borderRadius:10,background:"#111",border:"1px solid #333",marginBottom:16}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#888",marginBottom:8}}>CONTEO REAL</div>
+            <Row l="MXN contado:" v={`$${closeResult.countedMxn.toFixed(2)}`}/>
+            <Row l="USD contado:" v={`US$${closeResult.countedUsd.toFixed(2)}`}/>
+            <Row l="Tarjeta voucher:" v={`$${closeResult.countedCard.toFixed(2)}`}/>
+            {Math.abs(closeResult.diffMxn)>0.01&&<Row l="Diferencia MXN:" v={`${closeResult.diffMxn>0?"+":""}$${closeResult.diffMxn.toFixed(2)}`} c={closeResult.diffMxn>0?"#22c55e":"#ef4444"}/>}
+            {Math.abs(closeResult.diffUsd)>0.01&&<Row l="Diferencia USD:" v={`${closeResult.diffUsd>0?"+":""}US$${closeResult.diffUsd.toFixed(2)}`} c={closeResult.diffUsd>0?"#22c55e":"#ef4444"}/>}
+            {Math.abs(closeResult.diffCard)>0.01&&<Row l="Diferencia tarjeta:" v={`${closeResult.diffCard>0?"+":""}$${closeResult.diffCard.toFixed(2)}`} c={closeResult.diffCard>0?"#22c55e":"#ef4444"}/>}
+          </div>
+          <div style={{textAlign:"center",padding:16,borderRadius:10,background:diffColor+"11",border:`2px solid ${diffColor}33`,marginBottom:16}}>
+            <div style={{fontSize:11,color:diffColor,fontWeight:600,marginBottom:4}}>{diffLabel}</div>
+            <div style={{fontSize:28,fontWeight:800,fontFamily:mono,color:diffColor}}>{Math.abs(diffTotal)<0.01?"$0.00":`${diffTotal>0?"+":""}$${diffTotal.toFixed(2)}`}</div>
+            <div style={{fontSize:9,color:"#666",marginTop:4}}>Diferencia total equivalente en MXN</div>
+          </div>
+          {notes&&<div style={{fontSize:10,color:"#888",marginBottom:12}}>Notas: {notes}</div>}
+          <button onClick={()=>onConfirm(closeResult)} style={{width:"100%",padding:"14px 0",borderRadius:10,border:"none",background:"linear-gradient(135deg,#f59e0b,#d97706)",color:"#000",fontSize:14,fontWeight:700,cursor:"pointer"}}>Listo \u2014 Nuevo Turno</button>
+        </div>
+      </Overlay>
+    );
+  }
 
+  // CLOSE FORM
   return (
     <Overlay onClose={onClose}>
       <div style={{background:"#1a1a1a",borderRadius:12,padding:24,width:420,border:"1px solid #333",color:"#fafafa",maxHeight:"90vh",overflow:"auto"}}>
-        <div style={{fontSize:16,fontWeight:700,marginBottom:4}}>Cerrar Turno</div>
-        <div style={{fontSize:10,color:"#888",marginBottom:16}}>
-          Abierto: {new Date(shift.opened_at).toLocaleTimeString("es-MX",{timeZone:TZ,hour:"2-digit",minute:"2-digit"})} · {shiftData.salesCount} ventas · ${shiftData.salesTotal.toFixed(2)} total
+        <div style={{fontSize:18,fontWeight:700,marginBottom:2}}>Cerrar Turno</div>
+        <div style={{fontSize:10,color:"#888",marginBottom:16}}>{new Date(shift.opened_at).toLocaleTimeString("es-MX",{timeZone:TZ,hour:"2-digit",minute:"2-digit"})} \u2014 ahora \u00b7 {shiftData.salesCount} ventas \u00b7 ${shiftData.salesTotal.toFixed(2)} total</div>
+
+        <div style={{padding:14,borderRadius:10,background:"#0a0a0a",border:"2px solid #f59e0b33",marginBottom:16}}>
+          <div style={{fontSize:11,fontWeight:700,color:"#f59e0b",marginBottom:8}}>RESUMEN DEL TURNO</div>
+          <Row l="Total ventas:" v={`$${shiftData.salesTotal.toFixed(2)}`} c="#fafafa" b/>
+          <div style={{borderTop:"1px solid #262626",margin:"8px 0"}}/>
+          <Row l="Tarjeta:" v={`$${shiftData.cardTotal.toFixed(2)}`}/>
+          <Row l={`D\u00f3lares recibidos: US$${shiftData.usdReceived.toFixed(2)}`} v={`\u2248$${(shiftData.usdReceived*xrate).toFixed(2)}`}/>
+          <Row l="Efectivo MXN (ventas):" v={`$${shiftData.cashMxnReceived.toFixed(2)}`}/>
+          {shiftData.expTotal>0&&<Row l="Gastos de caja:" v={`-$${shiftData.expTotal.toFixed(2)}`} c="#ef4444"/>}
+          <div style={{borderTop:"1px solid #262626",margin:"8px 0"}}/>
+          <Row l="Esperado MXN en caja:" v={`$${expectedMxn.toFixed(2)}`} c="#f59e0b" b/>
+          <Row l="Esperado USD en caja:" v={`US$${expectedUsd.toFixed(2)}`} c="#22c55e" b/>
+          <Row l="Tarjeta a conciliar:" v={`$${expectedCard.toFixed(2)}`} c="#3b82f6" b/>
         </div>
 
-        {/* ── RUBRO 1: EFECTIVO MXN ── */}
-        <div style={{padding:12,borderRadius:8,background:"#111",border:"1px solid #262626",marginBottom:12,fontSize:11}}>
-          <div style={{fontWeight:700,marginBottom:6,color:"#f59e0b"}}>💵 Efectivo MXN en caja</div>
-          <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{color:"#888"}}>Fondo apertura:</span><span style={{fontFamily:mono}}>${Number(shift.opening_fund_mxn).toFixed(2)}</span></div>
-          <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{color:"#888"}}>+ Ventas efectivo MXN:</span><span style={{fontFamily:mono,color:"#22c55e"}}>+${shiftData.cashMxnReceived.toFixed(2)}</span></div>
-          {shiftData.cashMxnChange>0&&<div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{color:"#888"}}>− Cambio dado (ventas MXN):</span><span style={{fontFamily:mono,color:"#ef4444"}}>-${shiftData.cashMxnChange.toFixed(2)}</span></div>}
-          {shiftData.usdChangeGivenMxn>0&&<div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{color:"#888"}}>− Cambio dado (ventas USD):</span><span style={{fontFamily:mono,color:"#ef4444"}}>-${shiftData.usdChangeGivenMxn.toFixed(2)}</span></div>}
-          {shiftData.expTotal>0&&<div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{color:"#888"}}>− Gastos de caja:</span><span style={{fontFamily:mono,color:"#ef4444"}}>-${shiftData.expTotal.toFixed(2)}</span></div>}
-          <div style={{borderTop:"1px solid #333",paddingTop:6,marginTop:6,display:"flex",justifyContent:"space-between",fontWeight:700}}><span>Esperado en caja:</span><span style={{fontFamily:mono,color:"#f59e0b"}}>${expectedMxn.toFixed(2)}</span></div>
-        </div>
-        <div style={{marginBottom:8}}>
-          <div style={{fontSize:10,color:"#888",marginBottom:4}}>Conteo real MXN *</div>
+        <div style={{fontSize:11,fontWeight:700,color:"#888",marginBottom:8}}>CONTEO REAL DE CAJA</div>
+        <div style={{marginBottom:10}}>
+          <div style={{fontSize:10,color:"#f59e0b",marginBottom:3}}>\ud83d\udcb5 Efectivo MXN *</div>
           <input type="number" value={cMxn} onChange={e=>setCMxn(e.target.value)} placeholder={expectedMxn.toFixed(2)} style={S.input}/>
+          {cMxn&&Math.abs((parseFloat(cMxn)||0)-expectedMxn)>0.01&&(()=>{const d=(parseFloat(cMxn)||0)-expectedMxn;return<div style={{fontSize:10,fontFamily:mono,color:d>0?"#22c55e":"#ef4444",textAlign:"right",marginTop:2}}>{d>0?"+":""}${d.toFixed(2)}</div>;})()}
         </div>
-        {cMxn && <DiffBadge val={(parseFloat(cMxn)||0)-expectedMxn} label="Diferencia MXN"/>}
-
-        {/* ── RUBRO 2: EFECTIVO USD ── */}
-        <div style={{padding:12,borderRadius:8,background:"#111",border:"1px solid #22c55e22",marginBottom:12,marginTop:16,fontSize:11}}>
-          <div style={{fontWeight:700,marginBottom:6,color:"#22c55e"}}>🇺🇸 Dólares físicos en caja</div>
-          <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{color:"#888"}}>Fondo apertura USD:</span><span style={{fontFamily:mono}}>US${Number(shift.opening_fund_usd).toFixed(2)}</span></div>
-          {shiftData.usdReceived>0&&<div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{color:"#888"}}>+ Dólares recibidos de clientes:</span><span style={{fontFamily:mono,color:"#22c55e"}}>+US${shiftData.usdReceived.toFixed(2)}</span></div>}
-          {shiftData.usdChangeGivenUsd>0&&<div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{color:"#888"}}>− Cambio dado en USD:</span><span style={{fontFamily:mono,color:"#ef4444"}}>-US${shiftData.usdChangeGivenUsd.toFixed(2)}</span></div>}
-          <div style={{borderTop:"1px solid #333",paddingTop:6,marginTop:6,display:"flex",justifyContent:"space-between",fontWeight:700}}><span>Esperado USD:</span><span style={{fontFamily:mono,color:"#22c55e"}}>US${expectedUsd.toFixed(2)}</span></div>
-        </div>
-        <div style={{marginBottom:8}}>
-          <div style={{fontSize:10,color:"#888",marginBottom:4}}>Conteo real USD</div>
+        <div style={{marginBottom:10}}>
+          <div style={{fontSize:10,color:"#22c55e",marginBottom:3}}>\ud83c\uddfa\ud83c\uddf8 D\u00f3lares USD</div>
           <input type="number" value={cUsd} onChange={e=>setCUsd(e.target.value)} placeholder={expectedUsd.toFixed(2)} style={{...S.input,borderColor:"#22c55e44"}}/>
+          {cUsd&&Math.abs((parseFloat(cUsd)||0)-expectedUsd)>0.01&&(()=>{const d=(parseFloat(cUsd)||0)-expectedUsd;return<div style={{fontSize:10,fontFamily:mono,color:d>0?"#22c55e":"#ef4444",textAlign:"right",marginTop:2}}>{d>0?"+":""}US${d.toFixed(2)}</div>;})()}
         </div>
-        {cUsd && <DiffBadge val={(parseFloat(cUsd)||0)-expectedUsd} label="Diferencia USD"/>}
-
-        {/* ── RUBRO 3: TARJETAS ── */}
-        <div style={{padding:12,borderRadius:8,background:"#111",border:"1px solid #3b82f622",marginBottom:12,marginTop:16,fontSize:11}}>
-          <div style={{fontWeight:700,marginBottom:6,color:"#3b82f6"}}>💳 Tarjetas (conciliación)</div>
-          <div style={{display:"flex",justifyContent:"space-between"}}><span style={{color:"#888"}}>Ventas con tarjeta registradas:</span><span style={{fontFamily:mono,color:"#3b82f6"}}>${expectedCard.toFixed(2)}</span></div>
-        </div>
-        <div style={{marginBottom:8}}>
-          <div style={{fontSize:10,color:"#888",marginBottom:4}}>Total voucher terminal BBVA</div>
+        <div style={{marginBottom:10}}>
+          <div style={{fontSize:10,color:"#3b82f6",marginBottom:3}}>\ud83d\udcb3 Tarjeta (voucher BBVA)</div>
           <input type="number" value={cCard} onChange={e=>setCCard(e.target.value)} placeholder={expectedCard.toFixed(2)} style={{...S.input,borderColor:"#3b82f644"}}/>
+          {cCard&&Math.abs((parseFloat(cCard)||0)-expectedCard)>0.01&&(()=>{const d=(parseFloat(cCard)||0)-expectedCard;return<div style={{fontSize:10,fontFamily:mono,color:d>0?"#22c55e":"#ef4444",textAlign:"right",marginTop:2}}>{d>0?"+":""}${d.toFixed(2)}</div>;})()}
         </div>
-        {cCard && <DiffBadge val={(parseFloat(cCard)||0)-expectedCard} label="Diferencia tarjetas"/>}
 
-        {/* Notas */}
-        <div style={{marginBottom:14,marginTop:16}}>
+        <button onClick={()=>setShowDetail(!showDetail)} style={{background:"none",border:"none",color:"#555",fontSize:10,cursor:"pointer",marginBottom:8,padding:0}}>{showDetail?"\u25bc":"\u25b6"} Detalle t\u00e9cnico de movimientos</button>
+        {showDetail&&(<div style={{padding:10,borderRadius:8,background:"#111",border:"1px solid #222",marginBottom:12,fontSize:10}}>
+          <Row l="Fondo MXN apertura:" v={`$${Number(shift.opening_fund_mxn).toFixed(2)}`}/>
+          <Row l="+ Ventas cash MXN:" v={`+$${shiftData.cashMxnReceived.toFixed(2)}`} c="#22c55e"/>
+          {shiftData.cashMxnChange>0&&<Row l="\u2212 Cambio dado (MXN):" v={`-$${shiftData.cashMxnChange.toFixed(2)}`} c="#ef4444"/>}
+          {shiftData.usdChangeGivenMxn>0&&<Row l="\u2212 Cambio dado (ventas USD, en MXN):" v={`-$${shiftData.usdChangeGivenMxn.toFixed(2)}`} c="#ef4444"/>}
+          {shiftData.expTotal>0&&<Row l="\u2212 Gastos caja:" v={`-$${shiftData.expTotal.toFixed(2)}`} c="#ef4444"/>}
+          <div style={{borderTop:"1px solid #333",margin:"6px 0"}}/>
+          <Row l="Fondo USD apertura:" v={`US$${Number(shift.opening_fund_usd).toFixed(2)}`}/>
+          {shiftData.usdReceived>0&&<Row l="+ USD recibidos clientes:" v={`+US$${shiftData.usdReceived.toFixed(2)}`} c="#22c55e"/>}
+          {shiftData.usdChangeGivenUsd>0&&<Row l="\u2212 Cambio dado en USD:" v={`-US$${shiftData.usdChangeGivenUsd.toFixed(2)}`} c="#ef4444"/>}
+          <div style={{borderTop:"1px solid #333",margin:"6px 0"}}/>
+          <Row l="Ventas USD (equiv. MXN):" v={`$${shiftData.usdSalesTotal.toFixed(2)}`}/>
+          <Row l="TC turno:" v={`$${xrate.toFixed(2)}`}/>
+        </div>)}
+
+        <div style={{marginBottom:14}}>
           <div style={{fontSize:10,color:"#888",marginBottom:4}}>Notas (opcional)</div>
           <input type="text" value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Observaciones del turno..." style={{...S.input,fontSize:12,textAlign:"left"}}/>
         </div>
 
-        <button onClick={handleConfirm} disabled={!cMxn||loading}
-          style={{width:"100%",padding:"14px 0",borderRadius:10,border:"none",background:cMxn?"linear-gradient(135deg,#ef4444,#dc2626)":"#333",color:"#fff",fontSize:14,fontWeight:700,cursor:"pointer"}}>
-          {loading?"Cerrando...":"Cerrar Turno y Guardar"}
-        </button>
+        <button onClick={handleConfirm} disabled={!cMxn||loading} style={{width:"100%",padding:"14px 0",borderRadius:10,border:"none",background:cMxn?"linear-gradient(135deg,#ef4444,#dc2626)":"#333",color:"#fff",fontSize:14,fontWeight:700,cursor:"pointer"}}>{loading?"Cerrando...":"Cerrar Turno y Guardar"}</button>
         <button onClick={onClose} style={{width:"100%",padding:"8px 0",marginTop:6,border:"none",background:"none",color:"#555",cursor:"pointer",fontSize:11}}>Cancelar</button>
       </div>
     </Overlay>
