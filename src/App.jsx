@@ -287,13 +287,13 @@ function ShiftCloseModal({ shift, xrate, onClose, onConfirm }) {
         <div style={{background:"#1a1a1a",borderRadius:12,padding:24,width:420,border:"1px solid #333",color:"#fafafa",maxHeight:"90vh",overflow:"auto"}}>
           <div style={{textAlign:"center",marginBottom:16}}>
             <div style={{fontSize:22,fontWeight:800,marginBottom:2}}>Turno Cerrado</div>
-            <div style={{fontSize:10,color:"#888"}}>{new Date(shift.opened_at).toLocaleDateString("es-MX",{timeZone:TZ,weekday:"short",day:"numeric",month:"short"})} \u00b7 {new Date(shift.opened_at).toLocaleTimeString("es-MX",{timeZone:TZ,hour:"2-digit",minute:"2-digit"})} \u2014 {new Date().toLocaleTimeString("es-MX",{timeZone:TZ,hour:"2-digit",minute:"2-digit"})}</div>
+            <div style={{fontSize:10,color:"#888"}}>{new Date(shift.opened_at).toLocaleDateString("es-MX",{timeZone:TZ,weekday:"short",day:"numeric",month:"short"})} · {new Date(shift.opened_at).toLocaleTimeString("es-MX",{timeZone:TZ,hour:"2-digit",minute:"2-digit"})} — {new Date().toLocaleTimeString("es-MX",{timeZone:TZ,hour:"2-digit",minute:"2-digit"})}</div>
           </div>
           <div style={{padding:16,borderRadius:10,background:"#111",border:"1px solid #333",marginBottom:16}}>
             <Row l="Total ventas:" v={`$${shiftData.salesTotal.toFixed(2)}`} b/>
             <div style={{borderTop:"1px solid #262626",margin:"8px 0"}}/>
             <Row l="Tarjeta:" v={`$${shiftData.cardTotal.toFixed(2)}`}/>
-            <Row l={`D\u00f3lares: US$${shiftData.usdReceived.toFixed(2)}`} v={`\u2248$${(shiftData.usdReceived*xrate).toFixed(2)} MXN`}/>
+            <Row l={`Dólares: US$${shiftData.usdReceived.toFixed(2)}`} v={`≈$${(shiftData.usdReceived*xrate).toFixed(2)} MXN`}/>
             <Row l="Efectivo MXN:" v={`$${shiftData.cashMxnReceived.toFixed(2)}`}/>
             {shiftData.expTotal>0&&<Row l="Gastos:" v={`-$${shiftData.expTotal.toFixed(2)}`} c="#ef4444"/>}
             <div style={{borderTop:"1px solid #262626",margin:"8px 0"}}/>
@@ -315,7 +315,7 @@ function ShiftCloseModal({ shift, xrate, onClose, onConfirm }) {
             <div style={{fontSize:9,color:"#666",marginTop:4}}>Diferencia total equivalente en MXN</div>
           </div>
           {notes&&<div style={{fontSize:10,color:"#888",marginBottom:12}}>Notas: {notes}</div>}
-          <button onClick={()=>onConfirm(closeResult)} style={{width:"100%",padding:"14px 0",borderRadius:10,border:"none",background:"linear-gradient(135deg,#f59e0b,#d97706)",color:"#000",fontSize:14,fontWeight:700,cursor:"pointer"}}>Listo \u2014 Nuevo Turno</button>
+          <button onClick={()=>onConfirm(closeResult)} style={{width:"100%",padding:"14px 0",borderRadius:10,border:"none",background:"linear-gradient(135deg,#f59e0b,#d97706)",color:"#000",fontSize:14,fontWeight:700,cursor:"pointer"}}>Listo — Nuevo Turno</button>
         </div>
       </Overlay>
     );
@@ -326,14 +326,14 @@ function ShiftCloseModal({ shift, xrate, onClose, onConfirm }) {
     <Overlay onClose={onClose}>
       <div style={{background:"#1a1a1a",borderRadius:12,padding:24,width:420,border:"1px solid #333",color:"#fafafa",maxHeight:"90vh",overflow:"auto"}}>
         <div style={{fontSize:18,fontWeight:700,marginBottom:2}}>Cerrar Turno</div>
-        <div style={{fontSize:10,color:"#888",marginBottom:16}}>{new Date(shift.opened_at).toLocaleTimeString("es-MX",{timeZone:TZ,hour:"2-digit",minute:"2-digit"})} \u2014 ahora \u00b7 {shiftData.salesCount} ventas \u00b7 ${shiftData.salesTotal.toFixed(2)} total</div>
+        <div style={{fontSize:10,color:"#888",marginBottom:16}}>{new Date(shift.opened_at).toLocaleTimeString("es-MX",{timeZone:TZ,hour:"2-digit",minute:"2-digit"})} — ahora · {shiftData.salesCount} ventas · ${shiftData.salesTotal.toFixed(2)} total</div>
 
         <div style={{padding:14,borderRadius:10,background:"#0a0a0a",border:"2px solid #f59e0b33",marginBottom:16}}>
           <div style={{fontSize:11,fontWeight:700,color:"#f59e0b",marginBottom:8}}>RESUMEN DEL TURNO</div>
           <Row l="Total ventas:" v={`$${shiftData.salesTotal.toFixed(2)}`} c="#fafafa" b/>
           <div style={{borderTop:"1px solid #262626",margin:"8px 0"}}/>
           <Row l="Tarjeta:" v={`$${shiftData.cardTotal.toFixed(2)}`}/>
-          <Row l={`D\u00f3lares recibidos: US$${shiftData.usdReceived.toFixed(2)}`} v={`\u2248$${(shiftData.usdReceived*xrate).toFixed(2)}`}/>
+          <Row l={`Dólares recibidos: US$${shiftData.usdReceived.toFixed(2)}`} v={`≈$${(shiftData.usdReceived*xrate).toFixed(2)}`}/>
           <Row l="Efectivo MXN (ventas):" v={`$${shiftData.cashMxnReceived.toFixed(2)}`}/>
           {shiftData.expTotal>0&&<Row l="Gastos de caja:" v={`-$${shiftData.expTotal.toFixed(2)}`} c="#ef4444"/>}
           <div style={{borderTop:"1px solid #262626",margin:"8px 0"}}/>
@@ -344,32 +344,32 @@ function ShiftCloseModal({ shift, xrate, onClose, onConfirm }) {
 
         <div style={{fontSize:11,fontWeight:700,color:"#888",marginBottom:8}}>CONTEO REAL DE CAJA</div>
         <div style={{marginBottom:10}}>
-          <div style={{fontSize:10,color:"#f59e0b",marginBottom:3}}>\ud83d\udcb5 Efectivo MXN *</div>
+          <div style={{fontSize:10,color:"#f59e0b",marginBottom:3}}>💵 Efectivo MXN *</div>
           <input type="number" value={cMxn} onChange={e=>setCMxn(e.target.value)} placeholder={expectedMxn.toFixed(2)} style={S.input}/>
           {cMxn&&Math.abs((parseFloat(cMxn)||0)-expectedMxn)>0.01&&(()=>{const d=(parseFloat(cMxn)||0)-expectedMxn;return<div style={{fontSize:10,fontFamily:mono,color:d>0?"#22c55e":"#ef4444",textAlign:"right",marginTop:2}}>{d>0?"+":""}${d.toFixed(2)}</div>;})()}
         </div>
         <div style={{marginBottom:10}}>
-          <div style={{fontSize:10,color:"#22c55e",marginBottom:3}}>\ud83c\uddfa\ud83c\uddf8 D\u00f3lares USD</div>
+          <div style={{fontSize:10,color:"#22c55e",marginBottom:3}}>🇺🇸 Dólares USD</div>
           <input type="number" value={cUsd} onChange={e=>setCUsd(e.target.value)} placeholder={expectedUsd.toFixed(2)} style={{...S.input,borderColor:"#22c55e44"}}/>
           {cUsd&&Math.abs((parseFloat(cUsd)||0)-expectedUsd)>0.01&&(()=>{const d=(parseFloat(cUsd)||0)-expectedUsd;return<div style={{fontSize:10,fontFamily:mono,color:d>0?"#22c55e":"#ef4444",textAlign:"right",marginTop:2}}>{d>0?"+":""}US${d.toFixed(2)}</div>;})()}
         </div>
         <div style={{marginBottom:10}}>
-          <div style={{fontSize:10,color:"#3b82f6",marginBottom:3}}>\ud83d\udcb3 Tarjeta (voucher BBVA)</div>
+          <div style={{fontSize:10,color:"#3b82f6",marginBottom:3}}>💳 Tarjeta (voucher BBVA)</div>
           <input type="number" value={cCard} onChange={e=>setCCard(e.target.value)} placeholder={expectedCard.toFixed(2)} style={{...S.input,borderColor:"#3b82f644"}}/>
           {cCard&&Math.abs((parseFloat(cCard)||0)-expectedCard)>0.01&&(()=>{const d=(parseFloat(cCard)||0)-expectedCard;return<div style={{fontSize:10,fontFamily:mono,color:d>0?"#22c55e":"#ef4444",textAlign:"right",marginTop:2}}>{d>0?"+":""}${d.toFixed(2)}</div>;})()}
         </div>
 
-        <button onClick={()=>setShowDetail(!showDetail)} style={{background:"none",border:"none",color:"#555",fontSize:10,cursor:"pointer",marginBottom:8,padding:0}}>{showDetail?"\u25bc":"\u25b6"} Detalle t\u00e9cnico de movimientos</button>
+        <button onClick={()=>setShowDetail(!showDetail)} style={{background:"none",border:"none",color:"#555",fontSize:10,cursor:"pointer",marginBottom:8,padding:0}}>{showDetail?"▼":"▶"} Detalle técnico de movimientos</button>
         {showDetail&&(<div style={{padding:10,borderRadius:8,background:"#111",border:"1px solid #222",marginBottom:12,fontSize:10}}>
           <Row l="Fondo MXN apertura:" v={`$${Number(shift.opening_fund_mxn).toFixed(2)}`}/>
           <Row l="+ Ventas cash MXN:" v={`+$${shiftData.cashMxnReceived.toFixed(2)}`} c="#22c55e"/>
-          {shiftData.cashMxnChange>0&&<Row l="\u2212 Cambio dado (MXN):" v={`-$${shiftData.cashMxnChange.toFixed(2)}`} c="#ef4444"/>}
-          {shiftData.usdChangeGivenMxn>0&&<Row l="\u2212 Cambio dado (ventas USD, en MXN):" v={`-$${shiftData.usdChangeGivenMxn.toFixed(2)}`} c="#ef4444"/>}
-          {shiftData.expTotal>0&&<Row l="\u2212 Gastos caja:" v={`-$${shiftData.expTotal.toFixed(2)}`} c="#ef4444"/>}
+          {shiftData.cashMxnChange>0&&<Row l="− Cambio dado (MXN):" v={`-$${shiftData.cashMxnChange.toFixed(2)}`} c="#ef4444"/>}
+          {shiftData.usdChangeGivenMxn>0&&<Row l="− Cambio dado (ventas USD, en MXN):" v={`-$${shiftData.usdChangeGivenMxn.toFixed(2)}`} c="#ef4444"/>}
+          {shiftData.expTotal>0&&<Row l="− Gastos caja:" v={`-$${shiftData.expTotal.toFixed(2)}`} c="#ef4444"/>}
           <div style={{borderTop:"1px solid #333",margin:"6px 0"}}/>
           <Row l="Fondo USD apertura:" v={`US$${Number(shift.opening_fund_usd).toFixed(2)}`}/>
           {shiftData.usdReceived>0&&<Row l="+ USD recibidos clientes:" v={`+US$${shiftData.usdReceived.toFixed(2)}`} c="#22c55e"/>}
-          {shiftData.usdChangeGivenUsd>0&&<Row l="\u2212 Cambio dado en USD:" v={`-US$${shiftData.usdChangeGivenUsd.toFixed(2)}`} c="#ef4444"/>}
+          {shiftData.usdChangeGivenUsd>0&&<Row l="− Cambio dado en USD:" v={`-US$${shiftData.usdChangeGivenUsd.toFixed(2)}`} c="#ef4444"/>}
           <div style={{borderTop:"1px solid #333",margin:"6px 0"}}/>
           <Row l="Ventas USD (equiv. MXN):" v={`$${shiftData.usdSalesTotal.toFixed(2)}`}/>
           <Row l="TC turno:" v={`$${xrate.toFixed(2)}`}/>
