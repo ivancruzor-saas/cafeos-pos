@@ -571,7 +571,11 @@ export default function CafeOSPOS() {
   const handleLogin = (user) => { setCurrentUser(user); setAuthState("shift_open"); };
   const handleLogout = () => { setCurrentUser(null); setCurrentShift(null); setAuthState("pin"); setSales({count:0,total:0}); };
   const handleShiftOpen = (shift, rate) => { setCurrentShift(shift); setXrate(rate); setAuthState("pos"); };
-  const handleShiftClosed = () => { setShowCloseShift(false); handleLogout(); };
+const handleShiftClosed = () => {
+  console.trace('handleShiftClosed called from:');
+  setShowCloseShift(false);
+  handleLogout();
+};
 
   // POS Logic
   const filtered = products.filter(p=> search ? p.name.toLowerCase().includes(search.toLowerCase()) : p.cat===activeCat);
