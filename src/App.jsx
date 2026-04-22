@@ -2,7 +2,6 @@ import { useState, useCallback, useRef, useEffect } from "react";
 
 // ============================================================
 // SUPABASE
-// trigger deploy after git reconnect
 // ============================================================
 const SB_URL = "https://lkpsfhqqaropogaepuyy.supabase.co";
 const SB_KEY = "sb_publishable_R5_AMdm-4XKw4yf3P5sVRg_tUCNWuAu";
