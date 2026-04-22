@@ -246,7 +246,10 @@ function ShiftCloseModal({ shift, xrate, onClose, onConfirm }) {
 
   if (!shiftData) return <Overlay onClose={onClose}><div style={{background:"#1a1a1a",borderRadius:12,padding:24,width:380,border:"1px solid #333",color:"#fafafa",textAlign:"center"}}>Calculando turno...</div></Overlay>;
 
-  const expectedMxn = Number(shift.opening_fund_mxn) + shiftData.cashMxnReceived - shiftData.cashMxnChange - shiftData.usdChangeGivenMxn - shiftData.expTotal;
+  const expectedMxn = Number(shift.opening_fund_mxn)
+  + shiftData.cashMxnReceived
+  - shiftData.usdChangeGivenMxn
+  - shiftData.expTotal;
   const expectedUsd = Number(shift.opening_fund_usd) + shiftData.usdReceived - shiftData.usdChangeGivenUsd;
   const expectedCard = shiftData.cardTotal;
 
@@ -363,7 +366,6 @@ function ShiftCloseModal({ shift, xrate, onClose, onConfirm }) {
         {showDetail&&(<div style={{padding:10,borderRadius:8,background:"#111",border:"1px solid #222",marginBottom:12,fontSize:10}}>
           <Row l="Fondo MXN apertura:" v={`$${Number(shift.opening_fund_mxn).toFixed(2)}`}/>
           <Row l="+ Ventas cash MXN:" v={`+$${shiftData.cashMxnReceived.toFixed(2)}`} c="#22c55e"/>
-          {shiftData.cashMxnChange>0&&<Row l="− Cambio dado (MXN):" v={`-$${shiftData.cashMxnChange.toFixed(2)}`} c="#ef4444"/>}
           {shiftData.usdChangeGivenMxn>0&&<Row l="− Cambio dado (ventas USD, en MXN):" v={`-$${shiftData.usdChangeGivenMxn.toFixed(2)}`} c="#ef4444"/>}
           {shiftData.expTotal>0&&<Row l="− Gastos caja:" v={`-$${shiftData.expTotal.toFixed(2)}`} c="#ef4444"/>}
           <div style={{borderTop:"1px solid #333",margin:"6px 0"}}/>
